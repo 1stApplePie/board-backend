@@ -3,10 +3,31 @@ import mongoose from 'mongoose';
 import Joi from 'joi';
 import { ObjectId } from 'mongodb';
 
-export const checkObejctId = (req, res, next) => {
+export const getPostById = async (req, res, next) => {
   const { id } = req.params;
   if (!ObjectId.isValid(id)) {
-    res.status(400).send({ error: 'Invalid ObjectId' });
+    res.status(400).send();
+    return;
+  }
+  try {
+    const post = await Post.findById(id);
+    if (!post) {
+      console.log('getPostById, no posts');
+      res.status(404).send();
+      return;
+    }
+    res.locals.post = post;
+    return next();
+  } catch (e) {
+    res.status(500).send();
+  }
+};
+
+export const checkOwnPost = (req, res, next) => {
+  console.log(res.locals);
+  const { user } = res.locals;
+  if (post.user._id.toString() !== user._id) {
+    res.status(403).send();
     return;
   }
   return next();
@@ -40,6 +61,7 @@ export const write = async (req, res) => {
     title,
     body,
     tags,
+    user: res.locals.user,
   });
   try {
     await post.save();
@@ -51,6 +73,7 @@ export const write = async (req, res) => {
 };
 
 /* GET /api/posts */
+/* GET /api/posts?username=&tag=&page= */
 export const list = async (req, res) => {
   // 페이지 기능
   const page = parseInt(req.query.page || '1', 10);
@@ -60,6 +83,12 @@ export const list = async (req, res) => {
     res.send({ Error: 'Invalid Access' });
     return;
   }
+
+  const { tag, username } = req.query;
+  const query = {
+    ...(username ? { 'user.username': username } : {}),
+    ...(tag ? { tags: tag } : {}),
+  };
   try {
     const posts = await Post.find()
       .sort({ publishedDate: -1 })
@@ -91,13 +120,14 @@ export const read = async (req, res) => {
   try {
     const post = await Post.findById(id).exec();
     if (!post) {
-      res.status(404).send({ error: 'Invalid post' });
+      console.log('no posts!!');
+      res.status(404).send();
       return;
     }
     res.send(post);
   } catch (e) {
     console.log(e);
-    res.status(500).send({ error: 'Internal Server Error' });
+    res.status(500).send();
   }
 };
 

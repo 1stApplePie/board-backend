@@ -2,10 +2,12 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 import express from 'express';
-import bodyParser from 'body-parser';
 import mongoose from 'mongoose';
+import cookieParser from 'cookie-parser';
+import bodyParser from 'body-parser';
 
 import api from './api/index.js';
+import jwtMiddleware from './lib/jwtMiddleware.js';
 
 const app = express();
 const router = express.Router();
@@ -20,11 +22,13 @@ mongoose
     console.error(e);
   });
 
+app.use(cookieParser());
+// app.use(express.json());
+app.use(bodyParser.json());
+
+app.use(jwtMiddleware);
+
 router.use('/api', api);
-
-// 라우터 적용 전 bodyParser 적용
-app.use(bodyParser());
-
 app.use(router);
 
 const port = PORT || 4000;
