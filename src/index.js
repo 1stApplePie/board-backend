@@ -1,4 +1,5 @@
 import dotenv from 'dotenv';
+
 dotenv.config();
 
 import express from 'express';
@@ -8,6 +9,7 @@ import bodyParser from 'body-parser';
 
 import api from './api/index.js';
 import jwtMiddleware from './lib/jwtMiddleware.js';
+import createFakeData from './createFakeData.js';
 
 const app = express();
 const router = express.Router();
@@ -17,6 +19,7 @@ mongoose
   .connect(MONGO_URI)
   .then(() => {
     console.log('Connected to MongoDB');
+    // createFakeData();
   })
   .catch((e) => {
     console.error(e);

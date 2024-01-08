@@ -1,7 +1,32 @@
 import Post from '../../models/post.js';
 import mongoose from 'mongoose';
-import Joi from 'joi';
+import Joi from '@hapi/joi';
+import sanitizeHtml from 'sanitize-html';
 import { ObjectId } from 'mongodb';
+
+const sanitizeOption = {
+  allowedTags: [
+    'h1',
+    'h2',
+    'b',
+    'i',
+    'u',
+    's',
+    'p',
+    'ul',
+    'ol',
+    'li',
+    'blockquote',
+    'a',
+    'img',
+  ],
+  allowedAttributes: {
+    a: ['href', 'name', 'target'],
+    img: ['src'],
+    li: ['class'],
+  },
+  allowedSchemes: ['data', 'http'],
+};
 
 export const getPostById = async (req, res, next) => {
   const { id } = req.params;
@@ -17,15 +42,15 @@ export const getPostById = async (req, res, next) => {
       return;
     }
     res.locals.post = post;
-    return next();
+    next();
   } catch (e) {
+    console.error(e);
     res.status(500).send();
   }
 };
 
 export const checkOwnPost = (req, res, next) => {
-  console.log(res.locals);
-  const { user } = res.locals;
+  const { user, post } = res.locals; // Destructure post from res.locals
   if (post.user._id.toString() !== user._id) {
     res.status(403).send();
     return;
@@ -59,13 +84,13 @@ export const write = async (req, res) => {
   const { title, body, tags } = req.body;
   const post = new Post({
     title,
-    body,
+    body: sanitizeHtml(body, sanitizeOption),
     tags,
     user: res.locals.user,
   });
   try {
     await post.save();
-    res.send(post);
+    res.status(201).json(post);
   } catch (e) {
     console.log(e);
     res.status(500).send({ error: 'Internal Server Error' });
@@ -116,29 +141,25 @@ export const list = async (req, res) => {
 
 /* GET /api/posts/:id */
 export const read = async (req, res) => {
-  const { id } = req.params;
-  try {
-    const post = await Post.findById(id).exec();
-    if (!post) {
-      console.log('no posts!!');
-      res.status(404).send();
-      return;
-    }
-    res.send(post);
-  } catch (e) {
-    console.log(e);
-    res.status(500).send();
-  }
+  res.json(res.locals.post);
 };
 
 /* DELETE /api/posts/:id */
 export const remove = async (req, res) => {
-  const { id } = req.params;
+  console.log(res.locals);
+  const { post } = res.locals;
   try {
-    await Post.findByIdAndRemove(id).exec();
-    res.status(204).send({ error: 'Invalid access' });
+    const deletedPost = await Post.findOneAndDelete({ _id: post._id }).exec();
+    if (!deletedPost) {
+      // If the post was not found, send a 404 response
+      res.status(404).send({ error: 'Post not found' });
+      return;
+    }
+
+    // Send a 204 (No Content) response for a successful deletion
+    res.status(204).end();
   } catch (e) {
-    console.log(e);
+    console.error(e);
     res.status(500).send({ error: 'Internal Server Error' });
   }
 };
@@ -152,7 +173,7 @@ PATCH /api/posts/:id
 }
 */
 export const update = async (req, res) => {
-  const { id } = req.params;
+  const { post } = res.locals;
   const schema = Joi.object().keys({
     title: Joi.string(),
     body: Joi.string(),
@@ -168,14 +189,16 @@ export const update = async (req, res) => {
   }
 
   try {
-    const post = await Post.findByIdAndUpdate(id, req.body, {
+    const updatedPost = await Post.findByIdAndUpdate(post._id, req.body, {
       new: true,
     }).exec();
-    if (!post) {
+
+    if (!updatedPost) {
       res.status(404).send({ error: 'Invalid access' });
       return;
     }
-    res.send(post);
+
+    res.send(updatedPost);
   } catch (e) {
     console.log(e);
     res.status(500).send({ error: 'Internal Server Error' });

@@ -9,14 +9,9 @@ postsRouter.post('/', checkLoggedIn, postsCtrl.write);
 
 const postRouter = express.Router();
 
-postsRouter.get('/', postsCtrl.read);
-postsRouter.delete(
-  '/',
-  checkLoggedIn,
-  postsCtrl.checkOwnPost,
-  postsCtrl.remove,
-);
-postsRouter.patch('/', checkLoggedIn, postsCtrl.checkOwnPost, postsCtrl.update);
+postRouter.get('/', postsCtrl.read);
+postRouter.delete('/', checkLoggedIn, postsCtrl.checkOwnPost, postsCtrl.remove);
+postRouter.patch('/', checkLoggedIn, postsCtrl.checkOwnPost, postsCtrl.update);
 
 postsRouter.use('/:id', postsCtrl.getPostById, postRouter);
 
