@@ -1,4 +1,5 @@
 import Post from '../../models/post.js';
+import Comment from '../../models/comment.js';
 import mongoose from 'mongoose';
 import Joi from '@hapi/joi';
 import sanitizeHtml from 'sanitize-html';
@@ -97,6 +98,69 @@ export const write = async (req, res) => {
   }
 };
 
+/* GET /api/posts/:id/comments */
+export const getComment = async (req, res) => {
+  const baseUrl = req.baseUrl;
+  const pathSegments = baseUrl.split('/');
+
+  // Extract the third segment (index 2) of the path
+  const postId = pathSegments[3];
+
+  try {
+    const post = await Post.findById(postId);
+
+    if (!post) {
+      return res.status(404).json({ error: 'Post not found' });
+    }
+
+    // Retrieve comments from the post document
+    const comments = post.comments;
+
+    res.status(200).json(comments);
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+};
+
+/* POST /api/posts/:id/comments */
+export const addComment = async (req, res) => {
+  const { user, body } = req.body;
+  console.log(user);
+
+  const baseUrl = req.baseUrl;
+  const pathSegments = baseUrl.split('/');
+
+  // Extract the third segment (index 2) of the path
+  const postId = pathSegments[3];
+
+  if (!user || !body) {
+    return res.status(400).json({ error: 'User and body are required fields' });
+  }
+
+  try {
+    const post = await Post.findById(postId);
+
+    if (!post) {
+      return res.status(404).json({ error: 'Post not found' });
+    }
+
+    const comment = new Comment({
+      user: user,
+      body: body,
+    });
+
+    post.comments.push(comment); // Add the comment to the comments array
+
+    await post.save(); // Save the updated post with the new comment
+
+    res.status(201).json(comment);
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+};
+
 /* GET /api/posts */
 /* GET /api/posts?username=&tag=&page= */
 export const list = async (req, res) => {
@@ -146,7 +210,6 @@ export const read = async (req, res) => {
 
 /* DELETE /api/posts/:id */
 export const remove = async (req, res) => {
-  console.log(res.locals);
   const { post } = res.locals;
   try {
     const deletedPost = await Post.findOneAndDelete({ _id: post._id }).exec();

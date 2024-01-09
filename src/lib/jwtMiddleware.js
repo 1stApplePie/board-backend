@@ -27,8 +27,6 @@ const jwtMiddleware = async (req, res, next) => {
       });
     }
 
-    console.log('Decoded:', decoded);
-    console.log('res.locals:', res.locals);
     return next();
   } catch (e) {
     console.error('Error in jwtMiddleware:', e);
